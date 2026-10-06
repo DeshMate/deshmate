@@ -84,7 +84,7 @@ function ResultPanel({ result }) {
         <div><small>মেয়াদ</small><strong>{result.data.duration} মাস</strong></div>
         <div><small>সমগ্র মেয়াদে মোট খরচ</small><strong>{formatCurrency(result.data.total)}</strong></div>
       </div>}
-      <p className="result-note">এটি একটি আনুমানিক হিসাব। প্রকৃত খরচ আপনার পছন্দ ও বর্তমান দামের ওপর নির্ভর করবে।</p>
+      <p className="result-note">{result.notice}</p>
     </aside>
   )
 }
@@ -93,6 +93,15 @@ function CalculatorForm({ id }) {
   const fields = fieldSets[id]
   const [values, setValues] = useState(() => Object.fromEntries(fields.map((item) => [item.key, item.key === 'quality' ? 'Standard' : item.placeholder || ''])))
   const result = getResult(id, values)
+  if (result) {
+    result.notice = id === 'construction'
+      ? 'এগুলো কেবল অনুমান। অবস্থান, উপকরণ, শ্রম ও নকশা অনুযায়ী প্রকৃত খরচ বদলাবে।'
+      : ['abroad-cost', 'japan-cost', 'kuwait-cost'].includes(id)
+        ? 'খরচগুলো অনুমানমাত্র। ভিসা ও অভিবাসন-সংক্রান্ত তথ্যের জন্য সরকারি সূত্র যাচাই করুন; এটি যোগ্যতা বা অনুমোদনের দাবি নয়।'
+        : id === 'electricity'
+          ? 'এটি আনুমানিক বিদ্যুৎ ব্যবহার ও বিল, বাংলাদেশে প্রযোজ্য কোনো সরকারি বিলের হিসাব নয়।'
+          : 'এটি একটি আনুমানিক হিসাব। প্রকৃত খরচ আপনার পছন্দ ও বর্তমান দামের ওপর নির্ভর করবে।'
+  }
 
   function updateValue(key, value) {
     setValues((current) => ({ ...current, [key]: value }))

@@ -37,6 +37,25 @@ export default function MainLayout({ theme, setTheme }) {
         to: `/districts/${district.id}`,
         type: 'জেলা',
       }))
+    const foodName = (food) => typeof food === 'string' ? food : food.nameBn || food.name
+    const districtDetails = districts.flatMap((district) => [
+      ...district.attractions
+        .filter((value) => value.toLocaleLowerCase().includes(query))
+        .map((value) => ({
+          label: value,
+          description: `দর্শনীয় স্থান · ${district.nameBangla}`,
+          to: `/districts/${district.id}`,
+          type: 'দর্শনীয় স্থান',
+        })),
+      ...district.famousFoods
+        .filter((food) => foodName(food)?.toLocaleLowerCase().includes(query))
+        .map((food) => ({
+          label: foodName(food),
+          description: `খাবার · ${district.nameBangla}`,
+          to: `/districts/${district.id}`,
+          type: 'খাবার',
+        })),
+    ])
     const toolItems = toolCatalog
       .filter((tool) => [tool.name, tool.nameBangla, tool.summary, tool.summaryBangla]
         .some((value) => value.toLocaleLowerCase().includes(query)))
@@ -46,7 +65,7 @@ export default function MainLayout({ theme, setTheme }) {
         to: `/tools/${tool.id}`,
         type: 'টুল',
       }))
-    return [...districtItems, ...toolItems].slice(0, 6)
+    return [...districtItems, ...districtDetails, ...toolItems].slice(0, 8)
   }, [search])
 
   return (

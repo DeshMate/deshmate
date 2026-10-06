@@ -52,47 +52,125 @@ export function DistrictDetailPage() {
   const [planDays, setPlanDays] = useState('one')
 
   if (!district) {
-    return <section className="page-shell"><div className="empty-state">এই জেলার তথ্য পাওয়া যায়নি। <Link to="/districts">সব জেলা দেখুন</Link></div></section>
+    return <section className="page-shell"><div className="empty-state"><Link to="/districts">জেলা তালিকা থেকে একটি জেলা বেছে নিন</Link></div></section>
   }
 
   const plans = {
-    one: { label: '১ দিন', items: district.suggestedOneDayPlan },
-    two: { label: '২ দিন', items: district.suggestedTwoDayPlan },
-    three: { label: '৩ দিন', items: district.suggestedThreeDayPlan },
+    one: { label: '১ দিন', items: district.oneDayPlan || [] },
+    two: { label: '২ দিন', items: district.twoDayPlan || [] },
+    three: { label: '৩ দিন', items: district.threeDayPlan || [] },
   }
+  const availablePlans = Object.entries(plans).filter(([, plan]) => plan.items.length > 0)
+  const selectedPlanKey = plans[planDays]?.items.length ? planDays : availablePlans[0]?.[0]
+  const budgetLabels = {
+    transport: 'যাতায়াত',
+    food: 'খাবার',
+    accommodation: 'থাকা',
+    entryFee: 'প্রবেশ ফি',
+  }
+  const budgetItems = Object.entries(district.budget || {})
+    .filter(([key, range]) => budgetLabels[key] && range && Number.isFinite(range.min) && Number.isFinite(range.max))
+  const transportDetails = typeof district.transport === 'string'
+    ? [district.transport]
+    : Object.values(district.transport || {}).filter((value) => typeof value === 'string' && value)
+  const displayName = (item) => typeof item === 'string' ? item : item.nameBn || item.name
+  const touristSpots = district.touristSpots || []
+  const famousFoods = district.famousFoods || []
+  const sources = district.sources || []
+  const sourceTitles = new Map(sources.map((source) => [source.url, source.title]))
 
   return (
     <section className="page-shell district-detail-page">
       <Link className="back-link" to="/districts"><ArrowLeft size={16} /> সব জেলা</Link>
       <div className="detail-hero">
         <div className="detail-hero-copy">
-          <span className="eyebrow">{district.divisionBangla} বিভাগ</span>
+          <span className="eyebrow">{district.divisionBangla} বিভাগ · জেলা পরিচিতি</span>
           <h1>{district.nameBangla} <span>{district.nameEnglish}</span></h1>
-          <p>{district.shortDescription}</p>
-          <span className="district-best-time"><CalendarDays size={16} /> ঘোরার ভালো সময়: {district.bestTimeToVisit}</span>
+          {district.overview && <p>{district.overview}</p>}
+          {district.bestTimeToVisit && <span className="district-best-time"><CalendarDays size={16} /> ঘোরার ভালো সময়: {district.bestTimeToVisit}</span>}
         </div>
-        <div className="detail-budget-card">
-          <span>প্রতিদিনের আনুমানিক বাজেট</span>
-          <div><small>কম</small><strong>{formatCurrency(district.estimatedBudget.low)}</strong></div>
-          <div><small>মাঝারি</small><strong>{formatCurrency(district.estimatedBudget.medium)}</strong></div>
-          <div><small>স্বচ্ছন্দ</small><strong>{formatCurrency(district.estimatedBudget.high)}</strong></div>
-          <small>প্রতি ব্যক্তির আনুমানিক খরচ</small>
-        </div>
+        {budgetItems.length > 0 && (
+          <div className="detail-budget-card">
+            <span>আনুমানিক বাজেট</span>
+            {budgetItems.map(([key, range]) => (
+              <div key={key}><small>{budgetLabels[key]}</small><strong>{formatCurrency(range.min)}–{formatCurrency(range.max)}</strong></div>
+            ))}
+            <small>দামের তথ্য ও সময়কাল তথ্যসূত্রে দেখুন</small>
+          </div>
+        )}
       </div>
 
       <div className="detail-content-grid">
-        <article className="info-panel"><span className="eyebrow">জেলার পরিচয়</span><h2>ইতিহাস ও ঐতিহ্য</h2><p>{district.history}</p></article>
-        <article className="info-panel"><span className="eyebrow">ঘুরে দেখুন</span><h2>দর্শনীয় স্থান</h2><div className="tag-list">{district.attractions.map((attraction) => <span key={attraction}>{attraction}</span>)}</div><a className="text-link map-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(district.mapQuery || `${district.nameEnglish} Bangladesh`)}`} target="_blank" rel="noreferrer">Google Maps-এ দেখুন <ArrowRight size={15} /></a></article>
-        <article className="info-panel"><span className="eyebrow">স্থানীয় স্বাদ</span><h2>বিখ্যাত খাবার</h2><div className="tag-list">{district.famousFoods.map((food) => <span key={food}>{food}</span>)}</div></article>
-        <article className="info-panel"><span className="eyebrow">যাতায়াত</span><h2>কীভাবে ঘুরবেন</h2><p>{district.transportation}</p></article>
-        <article className="info-panel plan-panel">
-          <span className="eyebrow">আপনার ভ্রমণসূচি</span><h2>কীভাবে ঘুরবেন?</h2>
-          <div className="plan-tabs" role="tablist" aria-label="ভ্রমণের দিনের পরিকল্পনা">
-            {Object.entries(plans).map(([key, plan]) => <button type="button" key={key} role="tab" aria-selected={planDays === key} className={planDays === key ? 'selected' : ''} onClick={() => setPlanDays(key)}>{plan.label}</button>)}
-          </div>
-          <ol className="plan-list">{plans[planDays].items.map((item, index) => <li key={`${item}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span>{item}</li>)}</ol>
-        </article>
-        <article className="info-panel"><span className="eyebrow">জেলার বিশেষত্ব</span><h2>কীসের জন্য পরিচিত</h2><div className="tag-list">{district.famousFor.map((item) => <span key={item}>{item}</span>)}</div></article>
+        {touristSpots.length > 0 && (
+          <article className="info-panel">
+            <span className="eyebrow">ঘুরে দেখুন</span><h2>দর্শনীয় স্থান</h2>
+            <div className="verified-item-list">
+              {touristSpots.map((spot, index) => (
+                <div className="verified-item" key={`${displayName(spot)}-${index}`}>
+                  <strong>{displayName(spot)}</strong>
+                  {spot.category && <small>{spot.category}</small>}
+                  {spot.description && <p>{spot.description}</p>}
+                  {spot.whyFamous && <p>পরিচিতি: {spot.whyFamous}</p>}
+                  {spot.location && <p>অবস্থান: {spot.location}</p>}
+                  {spot.howToReach && <p>যাতায়াত: {spot.howToReach}</p>}
+                  {spot.mapQuery && <a className="text-link map-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.mapQuery)}`} target="_blank" rel="noreferrer">মানচিত্রে দেখুন <ArrowRight size={15} /></a>}
+                  {spot.sourceUrl && sourceTitles.has(spot.sourceUrl) && <p><a className="text-link" href={spot.sourceUrl} target="_blank" rel="noreferrer">তথ্যসূত্র: {sourceTitles.get(spot.sourceUrl)}</a></p>}
+                </div>
+              ))}
+            </div>
+            {district.mapQuery && <a className="text-link map-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(district.mapQuery)}`} target="_blank" rel="noreferrer">জেলা মানচিত্রে দেখুন <ArrowRight size={15} /></a>}
+          </article>
+        )}
+        {famousFoods.length > 0 && (
+          <article className="info-panel">
+            <span className="eyebrow">স্থানীয় স্বাদ</span><h2>বিখ্যাত খাবার</h2>
+            <div className="verified-item-list">
+              {famousFoods.map((food, index) => (
+                <div className="verified-item" key={`${displayName(food)}-${index}`}>
+                  <strong>{displayName(food)}</strong>
+                  {food.classification && <small>{food.classification}</small>}
+                  {food.description && <p>{food.description}</p>}
+                  {food.sourceUrl && sourceTitles.has(food.sourceUrl) && <p><a className="text-link" href={food.sourceUrl} target="_blank" rel="noreferrer">তথ্যসূত্র: {sourceTitles.get(food.sourceUrl)}</a></p>}
+                </div>
+              ))}
+            </div>
+          </article>
+        )}
+        {transportDetails.length > 0 && (
+          <article className="info-panel">
+            <span className="eyebrow">যাতায়াত</span><h2>কীভাবে যাবেন ও ঘুরবেন</h2>
+            <div className="verified-item-list">{transportDetails.map((detail, index) => <p key={`${detail}-${index}`}>{detail}</p>)}</div>
+          </article>
+        )}
+        {budgetItems.length > 0 && (
+          <article className="info-panel">
+            <span className="eyebrow">আনুমানিক খরচ</span><h2>বাজেট</h2>
+            <div className="verified-item-list">
+              {budgetItems.map(([key, range]) => <p key={key}>{budgetLabels[key]}: {formatCurrency(range.min)}–{formatCurrency(range.max)}{range.asOf ? ` (${range.asOf})` : ''}</p>)}
+            </div>
+          </article>
+        )}
+        {district.popularActivities?.length > 0 && (
+          <article className="info-panel">
+            <span className="eyebrow">জেলার বিশেষত্ব</span><h2>জনপ্রিয় কার্যক্রম</h2>
+            <div className="tag-list">{district.popularActivities.map((activity) => <span key={activity}>{activity}</span>)}</div>
+          </article>
+        )}
+        {availablePlans.length > 0 && (
+          <article className="info-panel plan-panel">
+            <span className="eyebrow">আপনার ভ্রমণসূচি</span><h2>কীভাবে ঘুরবেন?</h2>
+            <div className="plan-tabs" role="tablist" aria-label="ভ্রমণের দিনের পরিকল্পনা">
+              {availablePlans.map(([key, plan]) => <button type="button" key={key} role="tab" aria-selected={selectedPlanKey === key} className={selectedPlanKey === key ? 'selected' : ''} onClick={() => setPlanDays(key)}>{plan.label}</button>)}
+            </div>
+            <ol className="plan-list">{plans[selectedPlanKey].items.map((item, index) => <li key={`${displayName(item)}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span>{displayName(item)}</li>)}</ol>
+          </article>
+        )}
+        {sources.length > 0 && (
+          <article className="info-panel">
+            <span className="eyebrow">তথ্যসূত্র</span><h2>তথ্যের উৎস</h2>
+            <ul className="source-list">{sources.map((source) => <li key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul>
+          </article>
+        )}
       </div>
       <Link className="button button-primary detail-cta" to="/travel-planner">এই জেলায় ভ্রমণ পরিকল্পনা করুন <ArrowRight size={17} /></Link>
     </section>

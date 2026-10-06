@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   font-family: 'Noto Sans Bengali', 'DM Sans', system-ui, sans-serif;
   color: #152b43;
@@ -15,9 +17,9 @@
   --text: #152b43;
   --muted: #718197;
   --line: #e5ebf3;
-  --blue: #1769e0;
-  --blue-dark: #1055bd;
-  --blue-light: #eaf2ff;
+  --blue: #16845b;
+  --blue-dark: #116b49;
+  --blue-light: #e8f5ee;
   --shadow: 0 14px 38px rgba(22, 56, 99, .08);
 }
 
@@ -32,9 +34,9 @@
   --text: #e9f1fb;
   --muted: #9aabc0;
   --line: #27384c;
-  --blue: #6da7ff;
-  --blue-dark: #8bb8ff;
-  --blue-light: #1a304d;
+  --blue: #58bd8e;
+  --blue-dark: #80d2ab;
+  --blue-light: #18382c;
   --shadow: 0 14px 38px rgba(0, 0, 0, .22);
 }
 

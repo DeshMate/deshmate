@@ -30,17 +30,21 @@ export default function SearchBar({ value, onChange, onNavigate, placeholder = '
       </form>
       {value.trim() && (
         <div className="search-results">
-          {results.length ? results.map((result) => (
-            <button
-              type="button"
-              key={result.to}
-              onClick={() => openResult(result.to)}
-              className="search-result"
-            >
-              <span><strong>{result.label}</strong><small>{result.description}</small></span>
-              <em>{result.type}</em>
-            </button>
-          )) : <p className="search-empty">কোনো জেলা বা টুল পাওয়া যায়নি।</p>}
+          {results.length ? [...new Set(results.map((result) => result.type))].map((type) => (
+            <section className="search-result-group" key={type}>
+              <h2 className="search-result-group-title">{type}</h2>
+              {results.filter((result) => result.type === type).map((result, index) => (
+                <button
+                  type="button"
+                  key={`${result.to}-${result.label}-${index}`}
+                  onClick={() => openResult(result.to)}
+                  className="search-result"
+                >
+                  <span><strong>{result.label}</strong><small>{result.description}</small></span>
+                </button>
+              ))}
+            </section>
+          )) : <p className="search-empty">কোনো জেলা, জায়গা, খাবার বা টুল পাওয়া যায়নি।</p>}
         </div>
       )}
     </div>

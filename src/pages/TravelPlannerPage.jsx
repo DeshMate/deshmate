@@ -20,15 +20,19 @@ const kuakata = {
   nameBangla: 'কুয়াকাটা',
   nameEnglish: 'Kuakata',
   divisionEnglish: 'Barishal',
+  mapQuery: 'Kuakata Sea Beach, Patuakhali, Bangladesh',
+  touristSpots: districts.find((district) => district.id === 'patuakhali')?.touristSpots
+    .filter((spot) => spot.name === 'Kuakata') ?? [],
 }
 const locationOptions = [...districts, kuakata]
 const costLabels = [
   ['transport', 'যাতায়াত'],
-  ['accommodation', 'থাকা'],
+  ['accommodation', 'হোটেল / থাকা'],
   ['food', 'খাবার'],
   ['localTransport', 'স্থানীয় যাতায়াত'],
   ['other', 'অন্যান্য প্রয়োজনীয় খরচ'],
 ]
+const tagline = 'বাংলাদেশকে জানুন, জীবনের হিসাব করুন'
 
 function findLocation(value) {
   const query = String(value || '').trim().toLocaleLowerCase()
@@ -70,93 +74,39 @@ function readSavedTours() {
   }
 }
 
-function buildTourDetails(estimate) {
+function getDestinationMapQuery(destination) {
+  return destination.mapQuery || `${destination.nameEnglish}, Bangladesh`
+}
+
+function getDestinationPlaces(destination) {
+  return (destination.touristSpots || [])
+    .map((spot) => typeof spot === 'string' ? spot : spot.nameBn || spot.name)
+    .filter(Boolean)
+}
+
+function getAverage(range) {
+  return Math.round((range.min + range.max) / 2)
+}
+
+function buildTourDetails(estimate, url) {
   const route = `${estimate.origin.nameEnglish} → ${estimate.destination.nameEnglish}`
   const breakdown = costLabels
     .map(([key, label]) => `${label}: ${formatCurrency(estimate.costs.breakdown[key].min)} – ${formatCurrency(estimate.costs.breakdown[key].max)}`)
     .join('\n')
+  const places = getDestinationPlaces(estimate.destination)
   return [
     `DeshMate — ${route}`,
-    'বাংলাদেশকে জানুন, জীবনের হিসাব করুন',
+    tagline,
     `রুট: ${estimate.origin.nameBangla} → ${estimate.destination.nameBangla}`,
-    `দূরত্ব: প্রায় ${estimate.costs.distanceKm} কিমি (একমুখী)`,
     `সময়: ${estimate.costs.assumptions.days} দিন · ${estimate.costs.assumptions.travelers} জন`,
     breakdown,
-    `মোট আনুমানিক খরচ: ${formatCurrency(estimate.costs.total.min)} – ${formatCurrency(estimate.costs.total.max)}`,
+    'কার্যক্রম / প্রবেশ ফি: নির্দিষ্ট মূল্য মোট অনুমানে অন্তর্ভুক্ত নয়',
+    `আনুমানিক বাজেট: সর্বনিম্ন ${formatCurrency(estimate.costs.total.min)} · গড় ${formatCurrency(getAverage(estimate.costs.total))} · সর্বোচ্চ ${formatCurrency(estimate.costs.total.max)}`,
     `জনপ্রতি: ${formatCurrency(estimate.costs.perPerson.min)} – ${formatCurrency(estimate.costs.perPerson.max)}`,
+    ...(places.length ? [`ঘোরার স্থান: ${places.slice(0, 5).join(', ')}`] : []),
+    `মানচিত্র: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(getDestinationMapQuery(estimate.destination))}`,
+    `পরিকল্পনার লিংক: ${url}`,
   ].join('\n')
-}
-
-function escapeXml(value) {
-  return String(value).replace(/[<>&'"]/g, (character) => ({
-    '<': '&lt;',
-    '>': '&gt;',
-    '&': '&amp;',
-    "'": '&apos;',
-    '"': '&quot;',
-  })[character])
-}
-
-function downloadTourImage(estimate, format) {
-  const rows = costLabels.map(([key, label], index) => {
-    const y = 485 + index * 62
-    const range = `${formatCurrency(estimate.costs.breakdown[key].min)} – ${formatCurrency(estimate.costs.breakdown[key].max)}`
-    return `<text x="100" y="${y}" class="body">${escapeXml(label)}</text><text x="860" y="${y}" text-anchor="end" class="amount">${escapeXml(range)}</text><line x1="100" y1="${y + 22}" x2="860" y2="${y + 22}" class="rule"/>`
-  }).join('')
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1060" viewBox="0 0 1000 1060">
-    <style>.bg{fill:#f3f7fd}.card{fill:#fff;stroke:#e1e9f4;stroke-width:2}.blue{fill:#1769e0}.brand{font:700 34px 'Noto Sans Bengali',Arial,sans-serif;fill:#152b43}.sub{font:20px 'Noto Sans Bengali',Arial,sans-serif;fill:#718197}.title{font:700 32px 'Noto Sans Bengali',Arial,sans-serif;fill:#152b43}.body{font:20px 'Noto Sans Bengali',Arial,sans-serif;fill:#53657c}.amount{font:600 20px 'Noto Sans Bengali',Arial,sans-serif;fill:#152b43}.totalLabel{font:20px 'Noto Sans Bengali',Arial,sans-serif;fill:#dbeaff}.total{font:700 30px 'Noto Sans Bengali',Arial,sans-serif;fill:#fff}.rule{stroke:#e5ebf3}.footer{font:16px 'Noto Sans Bengali',Arial,sans-serif;fill:#718197}</style>
-    <rect width="1000" height="1060" class="bg"/>
-    <rect x="54" y="46" width="892" height="968" rx="28" class="card"/>
-    <rect x="54" y="46" width="892" height="12" rx="6" class="blue"/>
-    <text x="100" y="121" class="brand">DeshMate</text>
-    <text x="100" y="156" class="sub">বাংলাদেশকে জানুন, জীবনের হিসাব করুন</text>
-    <text x="100" y="225" class="title">${escapeXml(estimate.origin.nameBangla)} → ${escapeXml(estimate.destination.nameBangla)}</text>
-    <text x="100" y="270" class="body">প্রায় ${escapeXml(estimate.costs.distanceKm)} কিমি · ${escapeXml(estimate.costs.assumptions.days)} দিন · ${escapeXml(estimate.costs.assumptions.travelers)} জন</text>
-    <text x="100" y="365" class="title">খরচের বিস্তারিত</text>
-    ${rows}
-    <rect x="100" y="832" width="760" height="99" rx="18" class="blue"/>
-    <text x="128" y="873" class="totalLabel">মোট আনুমানিক খরচ</text>
-    <text x="128" y="914" class="total">${escapeXml(formatCurrency(estimate.costs.total.min))} – ${escapeXml(formatCurrency(estimate.costs.total.max))}</text>
-    <text x="100" y="970" class="footer">জনপ্রতি: ${escapeXml(formatCurrency(estimate.costs.perPerson.min))} – ${escapeXml(formatCurrency(estimate.costs.perPerson.max))}</text>
-    <text x="500" y="1026" text-anchor="middle" class="footer" font-weight="700">MD INJAMAM UL HAQUE</text>
-    <text x="500" y="1048" text-anchor="middle" class="footer">© 2026 DeshMate. সর্বস্বত্ব সংরক্ষিত।</text>
-  </svg>`
-
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
-    const image = new window.Image()
-    image.onload = () => {
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = 2000
-        canvas.height = 2120
-        const context = canvas.getContext('2d')
-        if (!context) throw new Error('Canvas is not available')
-        context.drawImage(image, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob((blob) => {
-          URL.revokeObjectURL(objectUrl)
-          if (!blob) {
-            reject(new Error('Image export failed'))
-            return
-          }
-          const link = document.createElement('a')
-          link.href = URL.createObjectURL(blob)
-          link.download = `deshmate-tour-${estimate.destination.id}.${format.toLowerCase()}`
-          link.click()
-          window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
-          resolve()
-        }, format === 'JPG' ? 'image/jpeg' : 'image/png', .95)
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl)
-        reject(error)
-      }
-    }
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('Could not render the tour image'))
-    }
-    image.src = objectUrl
-  })
 }
 
 function TourCard({ tour, onView, onEdit, onDelete, onShare }) {
@@ -217,6 +167,7 @@ export default function TravelPlannerPage() {
   const [hasPlan, setHasPlan] = useState(Boolean(initialOrigin && initialDestination && initialOrigin !== initialDestination))
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
   const [nameEditorOpen, setNameEditorOpen] = useState(false)
   const [tourName, setTourName] = useState('')
   const [editingTourId, setEditingTourId] = useState('')
@@ -375,12 +326,15 @@ export default function TravelPlannerPage() {
     if (!copied) throw new Error('Clipboard copy is unavailable')
   }
 
-  async function shareEstimate(selectedEstimate) {
-    const text = buildTourDetails(selectedEstimate)
+  async function shareWithApps(selectedEstimate) {
     const url = getTourLink(selectedEstimate)
     if (navigator.share) {
       try {
-        await navigator.share({ title: `DeshMate · ${selectedEstimate.destination.nameEnglish}`, text, url })
+        await navigator.share({
+          title: `${selectedEstimate.origin.nameEnglish} থেকে ${selectedEstimate.destination.nameEnglish} — DeshMate Travel Plan`,
+          text: buildTourDetails(selectedEstimate, url),
+          url,
+        })
         setNotice('ট্যুর প্ল্যান শেয়ার করা হয়েছে।')
         return
       } catch (shareError) {
@@ -388,32 +342,30 @@ export default function TravelPlannerPage() {
       }
     }
     try {
-      await copyText(`${text}\n${url}`)
-      setNotice('ট্যুরের বিবরণ ও লিংক কপি হয়েছে।')
+      await copyText(url)
+      setNotice('এই ভ্রমণ পরিকল্পনার লিংক কপি হয়েছে। Instagram, TikTok বা Messenger-এ লিংকটি paste করুন।')
     } catch {
-      setNotice('শেয়ার বা কপি করা যায়নি। ব্রাউজারের clipboard অনুমতি পরীক্ষা করুন।')
+      setNotice('লিংক কপি করা যায়নি। ব্রাউজারের clipboard অনুমতি পরীক্ষা করুন।')
     }
   }
 
-  async function shareSavedTour(tour) {
-    const savedOrigin = findLocation(tour.originId)
-    const savedDestination = findLocation(tour.destinationId)
-    if (!savedOrigin || !savedDestination) return
-    const selectedEstimate = {
-      origin: savedOrigin,
-      destination: savedDestination,
-      costs: calculateAutomaticTravelEstimate({
-        origin: savedOrigin,
-        destination: savedDestination,
-        days: tour.days,
-        travelers: tour.travelers,
-      }),
+  async function copyPlanLink(selectedEstimate) {
+    try {
+      await copyText(getTourLink(selectedEstimate))
+      setNotice('এই ভ্রমণ পরিকল্পনার লিংক কপি হয়েছে।')
+    } catch {
+      setNotice('লিংক কপি করা যায়নি। ব্রাউজারের clipboard অনুমতি পরীক্ষা করুন।')
     }
-    await shareEstimate(selectedEstimate)
+  }
+
+  function shareSavedTour(tour) {
+    loadTour(tour)
+    setShareOpen(true)
   }
 
   async function exportImage(format) {
     try {
+      const { downloadTourImage } = await import('../utils/travelShareImage.js')
       await downloadTourImage(estimate, format)
       setNotice(`${format} ফাইল ডাউনলোড হয়েছে।`)
     } catch {
@@ -421,7 +373,12 @@ export default function TravelPlannerPage() {
     }
   }
 
-  const details = estimate ? buildTourDetails(estimate) : ''
+  const tourLink = estimate ? getTourLink(estimate) : ''
+  const details = estimate ? buildTourDetails(estimate, tourLink) : ''
+  const destinationPlaces = estimate ? getDestinationPlaces(estimate.destination) : []
+  const destinationMapUrl = estimate
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(getDestinationMapQuery(estimate.destination))}`
+    : ''
 
   return (
     <section className="page-shell travel-page">
@@ -479,6 +436,39 @@ export default function TravelPlannerPage() {
           <div className="tour-export-brand">
             <strong>DeshMate</strong><span>বাংলাদেশকে জানুন, জীবনের হিসাব করুন</span>
           </div>
+          <section className="travel-share-card" aria-label="শেয়ার করার ভ্রমণ কার্ড">
+            <div className="travel-share-hero">
+              <span className="travel-share-kicker">DESHMATE · TRAVEL PLAN</span>
+              <span className="travel-share-compass" aria-hidden="true"><Compass size={36} /></span>
+              <p className="travel-share-tagline">{tagline}</p>
+              <h2>{estimate.origin.nameBangla} <ArrowRight size={19} /> {estimate.destination.nameBangla}</h2>
+              <p className="travel-share-meta"><span>{estimate.costs.assumptions.travelers} জন</span><span>{estimate.costs.assumptions.days} দিন</span><span>{estimate.costs.assumptions.nights} রাত</span></p>
+              <a className="travel-map-link" href={destinationMapUrl} target="_blank" rel="noreferrer"><MapPin size={15} /> মানচিত্র দেখুন</a>
+            </div>
+            <div className="travel-share-content">
+              {destinationPlaces.length > 0 && (
+                <section className="travel-share-places">
+                  <h3>ঘোরার স্থান</h3>
+                  <ul>{destinationPlaces.slice(0, 4).map((place, index) => <li key={`${place}-${index}`}>{place}</li>)}</ul>
+                  {destinationPlaces.length > 4 && <small>আরও {destinationPlaces.length - 4}টি স্থান জেলার গাইডে দেখুন</small>}
+                </section>
+              )}
+              <section className="travel-share-costs">
+                <h3>আনুমানিক খরচ</h3>
+                {costLabels.map(([key, label]) => (
+                  <div key={key}><span>{label}</span><strong>{formatCurrency(estimate.costs.breakdown[key].min)} – {formatCurrency(estimate.costs.breakdown[key].max)}</strong></div>
+                ))}
+                <div><span>কার্যক্রম / প্রবেশ ফি</span><strong>নির্দিষ্ট মূল্য অন্তর্ভুক্ত নয়</strong></div>
+              </section>
+              <div className="travel-share-total">
+                <span>সর্বনিম্ন</span><strong>{formatCurrency(estimate.costs.total.min)}</strong>
+                <span>গড়</span><strong>{formatCurrency(getAverage(estimate.costs.total))}</strong>
+                <span>সর্বোচ্চ</span><strong>{formatCurrency(estimate.costs.total.max)}</strong>
+              </div>
+              <a className="travel-share-permalink" href={tourLink}>{tourLink}</a>
+              <small className="travel-share-footnote">DeshMate-এর আনুমানিক পরিকল্পনা · প্রকৃত খরচ ভ্রমণের সময় অনুযায়ী বদলাতে পারে</small>
+            </div>
+          </section>
           <div className="travel-planner-layout travel-results-layout">
             <section className="travel-route-card">
               <div className="summary-top"><span className="summary-icon"><Compass size={21} /></span><span className="eyebrow">আপনার ভ্রমণ রুট</span></div>
@@ -533,12 +523,28 @@ export default function TravelPlannerPage() {
                 <button className="button button-secondary tour-cancel-save" type="button" onClick={() => setNameEditorOpen(false)}>বাতিল</button>
               </form>
             )}
-            <button className="button button-secondary" type="button" onClick={() => shareEstimate(estimate)}><Share2 size={16} /> Share Tour Plan</button>
+            <button className="button button-secondary travel-share-button" type="button" aria-expanded={shareOpen} aria-controls="travel-share-options" onClick={() => setShareOpen((open) => !open)}><Share2 size={16} /> শেয়ার করুন</button>
             <button className="button button-secondary" type="button" onClick={() => copyText(details).then(() => setNotice('ট্যুরের বিবরণ কপি হয়েছে।')).catch(() => setNotice('বিবরণ কপি করা যায়নি।'))}><Copy size={16} /> Copy Details</button>
             <button className="button button-secondary" type="button" onClick={() => window.print()}><FileText size={16} /> PDF</button>
             <button className="button button-secondary" type="button" onClick={() => exportImage('PNG')}><Image size={16} /> PNG</button>
             <button className="button button-secondary" type="button" onClick={() => exportImage('JPG')}><Image size={16} /> JPG</button>
           </div>
+          {shareOpen && (
+            <section className="travel-share-options" id="travel-share-options" aria-label="ভ্রমণ পরিকল্পনা শেয়ার">
+              <div>
+                <h3>আপনার ভ্রমণ পরিকল্পনা শেয়ার করুন</h3>
+                <p>লিংক খুললে একই গন্তব্য, ভ্রমণকারী ও দিনের হিসাব দেখা যাবে।</p>
+              </div>
+              <div className="travel-share-actions">
+                <button className="travel-social-button" type="button" onClick={() => shareWithApps(estimate)}><Share2 size={16} /> Messenger · Instagram · TikTok · আরও অ্যাপ</button>
+                <a className="travel-social-button" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(tourLink)}&quote=${encodeURIComponent(details)}`} target="_blank" rel="noreferrer">f <span>Facebook</span></a>
+                <a className="travel-social-button" href={`https://wa.me/?text=${encodeURIComponent(details)}`} target="_blank" rel="noreferrer">◉ <span>WhatsApp</span></a>
+                <button className="travel-social-button" type="button" onClick={() => copyPlanLink(estimate)}><Copy size={16} /> লিংক কপি</button>
+                <button className="travel-social-button" type="button" onClick={() => exportImage('PNG')}><Image size={16} /> শেয়ার কার্ড ছবি ডাউনলোড</button>
+              </div>
+              <p className="travel-share-hint">Messenger, Instagram ও TikTok-এর জন্য সমর্থিত ফোনে “আরও অ্যাপ” থেকে বেছে নিন। অন্যথায় কার্ডটি ডাউনলোড করে অ্যাপে যোগ করুন।</p>
+            </section>
+          )}
           {notice && <p className="tour-notice" role="status">{notice}</p>}
           <p className="tour-export-footer">© 2026 DeshMate. সর্বস্বত্ব সংরক্ষিত। | MD INJAMAM UL HAQUE</p>
         </div>

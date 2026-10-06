@@ -1,0 +1,19 @@
+{
+  "name": "DeshMate - বাংলাদেশকে জানুন, জীবনের হিসাব করুন",
+  "short_name": "DeshMate",
+  "description": "বাংলাদেশের জেলা, ভ্রমণ পরিকল্পনা ও জীবনের হিসাবের টুল।",
+  "lang": "bn-BD",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#116b49",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -18,13 +18,15 @@ npm run build
 npm run preview
 ```
 
-Vite writes the production site to `dist/`. The `vercel.json` rewrite keeps React Router routes working when opened or refreshed directly.
+Vite writes the production site to `dist/`.
 
-## Deploy to Vercel
+## Deploy to Cloudflare Pages
 
-1. Import the existing `DeshMate/deshmate` GitHub repository in Vercel.
-2. Select the Vite framework preset.
-3. Use `npm run build` as the build command and `dist` as the output directory.
-4. No environment variables are required.
+Connect the existing `DeshMate/deshmate` GitHub repository in Cloudflare Pages and use:
 
-Vercel redeploys the site after each push to the connected production branch.
+- Production branch: `main`
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Environment variables: none required
+
+Cloudflare Pages serves this Vite single-page app through its standard SPA fallback, so React Router routes can be opened or refreshed directly. Once Git integration is enabled, pushes to `main` trigger production builds and deployments.
