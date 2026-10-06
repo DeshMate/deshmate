@@ -1,116 +1,135 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
-import { Menu, Moon, Sun, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Compass, Menu, Moon, Sun, X } from 'lucide-react'
+import districts from '../data/districts.js'
+import { toolCatalog } from '../data/tools.js'
+import SearchBar from '../components/SearchBar.jsx'
+import SocialShareActions from '../components/SocialShareActions.jsx'
 
 const navItems = [
-  { label: 'Home', to: '/' },
-  { label: 'Districts', to: '/districts' },
-  { label: 'Travel Planner', to: '/travel-planner' },
-  { label: 'Life Tools', to: '/tools' },
-  { label: 'About', to: '/about' },
-  { label: 'Contact', to: '/contact' },
+  { label: 'হোম', to: '/' },
+  { label: 'জেলাসমূহ', to: '/districts' },
+  { label: 'ভ্রমণ পরিকল্পনা', to: '/travel-planner' },
+  { label: 'লাইফ টুলস', to: '/tools' },
+  { label: 'আমাদের কথা', to: '/about' },
 ]
 
-export default function MainLayout({ theme, setTheme, children }) {
+export default function MainLayout({ theme, setTheme }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const location = useLocation()
 
   useEffect(() => {
-    setMobileOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [location.pathname])
 
+  const searchItems = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase()
+    if (query.length < 1) return []
+    const districtItems = districts
+      .filter((district) =>
+        [district.nameBangla, district.nameEnglish, district.divisionBangla]
+          .some((value) => value.toLocaleLowerCase().includes(query)),
+      )
+      .map((district) => ({
+        label: `${district.nameBangla} · ${district.nameEnglish}`,
+        description: `${district.divisionBangla} বিভাগ`,
+        to: `/districts/${district.id}`,
+        type: 'জেলা',
+      }))
+    const toolItems = toolCatalog
+      .filter((tool) => [tool.name, tool.nameBangla, tool.summary, tool.summaryBangla]
+        .some((value) => value.toLocaleLowerCase().includes(query)))
+      .map((tool) => ({
+        label: tool.nameBangla,
+        description: tool.name,
+        to: `/tools/${tool.id}`,
+        type: 'টুল',
+      }))
+    return [...districtItems, ...toolItems].slice(0, 6)
+  }, [search])
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-lg font-bold text-white shadow-sm">D</div>
-            <div>
-              <div className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">DESHMATE</div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">Bangladesh guide</div>
-            </div>
+    <div className="site-frame">
+      <header className="site-header">
+        <div className="header-inner">
+          <Link to="/" className="brand" aria-label="DeshMate হোম">
+            <span className="brand-mark"><Compass size={22} /></span>
+            <span className="brand-copy">
+              <strong>DeshMate</strong>
+              <small>বাংলাদেশ আপনার হাতের মুঠোয়</small>
+            </span>
           </Link>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="desktop-nav" aria-label="প্রধান নেভিগেশন">
             {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `text-sm font-medium transition ${isActive ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 hover:text-emerald-600 dark:text-slate-300 dark:hover:text-emerald-400'}`
-                }
-              >
+              <NavLink key={item.to} to={item.to} end={item.to === '/'}>
                 {item.label}
               </NavLink>
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="header-actions">
+            <div className="global-search">
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                results={searchItems}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </div>
             <button
+              className="icon-button theme-button"
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-              aria-label="Toggle theme"
+              aria-label={theme === 'dark' ? 'লাইট মোড চালু করুন' : 'ডার্ক মোড চালু করুন'}
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-
             <button
+              className="icon-button mobile-menu-button"
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 lg:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               onClick={() => setMobileOpen((open) => !open)}
-              aria-label="Open navigation"
+              aria-label={mobileOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
+              aria-expanded={mobileOpen}
             >
-              {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
-
         {mobileOpen && (
-          <div className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex flex-col gap-2">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `rounded-xl px-3 py-2 text-base font-medium ${isActive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'}`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
+          <nav className="mobile-nav" aria-label="মোবাইল নেভিগেশন">
+            {navItems.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setMobileOpen(false)}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
         )}
       </header>
 
-      <main>{children}</main>
+      <main className="main-content"><Outlet /></main>
 
-      <footer className="border-t border-slate-200 bg-slate-100/80 dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-3 lg:px-8">
-          <div>
-            <div className="mb-3 text-lg font-extrabold text-slate-900 dark:text-white">DESHMATE</div>
-            <p className="text-sm text-slate-600 dark:text-slate-300">বাংলাদেশকে জানুন, জীবনের হিসাব করুন।</p>
+      <footer className="site-footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <Link to="/" className="brand">
+              <span className="brand-mark"><Compass size={22} /></span>
+              <span className="brand-copy"><strong>DeshMate</strong><small>বাংলাদেশকে জানুন, জীবনের হিসাব করুন</small></span>
+            </Link>
+            <p>ভ্রমণ পরিকল্পনা ও জীবনের হিসাব—সব এক জায়গায়।</p>
           </div>
-          <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-slate-700 dark:text-slate-200">Explore</h3>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-              <li><Link to="/districts">Districts</Link></li>
-              <li><Link to="/travel-planner">Travel Planner</Link></li>
-              <li><Link to="/tools">Life Tools</Link></li>
-            </ul>
+          <div className="footer-links">
+            <Link to="/about">আমাদের সম্পর্কে</Link>
+            <Link to="/contact">যোগাযোগ</Link>
+            <Link to="/privacy">গোপনীয়তা</Link>
+            <Link to="/terms">শর্তাবলি</Link>
           </div>
-          <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-slate-700 dark:text-slate-200">Legal</h3>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-              <li><Link to="/about">About</Link></li>
-              <li><Link to="/contact">Contact</Link></li>
-              <li><Link to="/privacy">Privacy</Link></li>
-              <li><Link to="/terms">Terms</Link></li>
-            </ul>
+          <div className="footer-social-share">
+            <span>DeshMate শেয়ার করুন</span>
+            <SocialShareActions compact />
           </div>
+          <p className="copyright">© 2026 DeshMate. সর্বস্বত্ব সংরক্ষিত। | MD INJAMAM UL HAQUE</p>
         </div>
       </footer>
     </div>

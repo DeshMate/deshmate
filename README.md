@@ -1,16 +1,30 @@
-# React + Vite
+# DeshMate
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+বাংলাদেশকে জানুন, জীবনের হিসাব করুন।
 
-Currently, two official plugins are available:
+DeshMate is a Bengali-first travel and life-planning website built with React, Vite, and React Router. District information, travel estimates, and calculators run in the browser; the project does not require a backend or environment variables.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Local development
 
-## React Compiler
+```sh
+npm ci
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Production build
 
-## Expanding the Oxlint configuration
+```sh
+npm run build
+npm run preview
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Vite writes the production site to `dist/`. The `vercel.json` rewrite keeps React Router routes working when opened or refreshed directly.
+
+## Deploy to Vercel
+
+1. Import the existing `DeshMate/deshmate` GitHub repository in Vercel.
+2. Select the Vite framework preset.
+3. Use `npm run build` as the build command and `dist` as the output directory.
+4. No environment variables are required.
+
+Vercel redeploys the site after each push to the connected production branch.

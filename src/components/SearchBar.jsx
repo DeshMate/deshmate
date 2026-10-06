@@ -1,22 +1,48 @@
 import { Search } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
-export default function SearchBar({ value, onChange, onSubmit, placeholder = 'Search...' }) {
+export default function SearchBar({ value, onChange, onNavigate, placeholder = 'জেলা বা টুল খুঁজুন', results = [] }) {
+  const navigate = useNavigate()
+
+  function openResult(to) {
+    navigate(to)
+    onChange('')
+    onNavigate?.()
+  }
+
+  function submit(event) {
+    event.preventDefault()
+    if (results[0]) openResult(results[0].to)
+  }
+
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSubmit?.(value)
-      }}
-      className="flex w-full items-center gap-3 rounded-full border border-emerald-200 bg-white px-4 py-3 shadow-sm ring-0 transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900"
-    >
-      <Search className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label="Search"
-        className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100"
-      />
-    </form>
+    <div className="search-wrap">
+      <form onSubmit={submit} className="search-form" role="search">
+        <Search size={17} aria-hidden="true" />
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          aria-label="জেলা বা টুল খুঁজুন"
+          aria-expanded={Boolean(value && results.length)}
+        />
+        <kbd>↵</kbd>
+      </form>
+      {value.trim() && (
+        <div className="search-results">
+          {results.length ? results.map((result) => (
+            <button
+              type="button"
+              key={result.to}
+              onClick={() => openResult(result.to)}
+              className="search-result"
+            >
+              <span><strong>{result.label}</strong><small>{result.description}</small></span>
+              <em>{result.type}</em>
+            </button>
+          )) : <p className="search-empty">কোনো জেলা বা টুল পাওয়া যায়নি।</p>}
+        </div>
+      )}
+    </div>
   )
 }

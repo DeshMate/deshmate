@@ -1,0 +1,157 @@
+import { useMemo, useState } from 'react'
+import { ArrowLeft, ArrowRight, Calculator, GraduationCap, Home, PiggyBank, Wallet } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import { toolCatalog } from '../data/tools.js'
+import {
+  calculateAbroadCost,
+  calculateEducationCost,
+  calculateElectricityUsage,
+  calculateEMI,
+  calculateHouseCost,
+  calculateJapanCost,
+  calculateKuwaitCost,
+  calculateSalaryExpense,
+  calculateTravelBudget,
+  calculateWeddingBudget,
+  formatCurrency,
+} from '../utils/calculations.js'
+
+const field = (key, label, placeholder = '0', extra = {}) => ({ key, label, placeholder, ...extra })
+const fieldSets = {
+  construction: [field('area', 'প্রতি তলার আয়তন (বর্গফুট)'), field('floors', 'তলার সংখ্যা', '১'), field('quality', 'নির্মাণের মান', '', { type: 'select', options: ['Basic', 'Standard', 'Premium'] })],
+  wedding: [field('guests', 'অতিথির সংখ্যা'), field('foodPerPerson', 'জনপ্রতি খাবার খরচ (৳)'), field('venue', 'ভেন্যু ভাড়া (৳)'), field('decoration', 'সাজসজ্জা (৳)'), field('photography', 'ফটোগ্রাফি (৳)'), field('clothing', 'পোশাক (৳)'), field('transport', 'যাতায়াত (৳)'), field('other', 'অন্যান্য (৳)')],
+  salary: [field('monthlyIncome', 'মাসিক আয় (৳)'), field('houseRent', 'বাড়ি ভাড়া (৳)'), field('food', 'খাবার (৳)'), field('transport', 'যাতায়াত (৳)'), field('utilities', 'বিদ্যুৎ, গ্যাস ও পানি (৳)'), field('family', 'পরিবার ও চিকিৎসা (৳)'), field('education', 'শিক্ষা (৳)'), field('loan', 'ঋণের কিস্তি (৳)'), field('other', 'অন্যান্য (৳)')],
+  'car-emi': [field('vehiclePrice', 'গাড়ির দাম (৳)'), field('downPayment', 'ডাউন পেমেন্ট (৳)'), field('loanDurationMonths', 'ঋণের মেয়াদ (মাস)', '60'), field('interestRateAnnual', 'বার্ষিক সুদের হার (%)', '10')],
+  'bike-emi': [field('vehiclePrice', 'বাইকের দাম (৳)'), field('downPayment', 'ডাউন পেমেন্ট (৳)'), field('loanDurationMonths', 'ঋণের মেয়াদ (মাস)', '36'), field('interestRateAnnual', 'বার্ষিক সুদের হার (%)', '10')],
+  'travel-budget': [field('transport', 'যাতায়াত (৳)'), field('hotel', 'হোটেল (৳)'), field('food', 'খাবার (৳)'), field('activities', 'কার্যক্রম ও দর্শনীয় স্থান (৳)'), field('other', 'অন্যান্য (৳)')],
+  'abroad-cost': [field('visa', 'ভিসা (৳)'), field('travel', 'বিমানভাড়া (৳)'), field('accommodation', 'থাকা (৳)'), field('documents', 'কাগজপত্র (৳)'), field('medical', 'মেডিকেল (৳)'), field('other', 'অন্যান্য (৳)')],
+  'japan-cost': [field('languageCourse', 'ভাষা কোর্স (৳)'), field('visa', 'ভিসা (৳)'), field('flight', 'বিমানভাড়া (৳)'), field('medical', 'মেডিকেল (৳)'), field('documents', 'কাগজপত্র (৳)'), field('accommodation', 'থাকা (৳)'), field('food', 'খাবার (৳)'), field('transport', 'যাতায়াত (৳)'), field('other', 'অন্যান্য (৳)')],
+  'kuwait-cost': [field('visa', 'ভিসা (৳)'), field('travel', 'বিমানভাড়া (৳)'), field('accommodation', 'থাকা (৳)'), field('documents', 'কাগজপত্র (৳)'), field('medical', 'মেডিকেল (৳)'), field('other', 'অন্যান্য (৳)')],
+  electricity: [field('wattage', 'যন্ত্রের ক্ষমতা (ওয়াট)'), field('hours', 'প্রতিদিন ব্যবহারের সময় (ঘণ্টা)'), field('quantity', 'যন্ত্রের সংখ্যা', '1'), field('rate', 'প্রতি ইউনিটের দাম (৳)', '8')],
+  education: [field('duration', 'মেয়াদ (মাস)'), field('tuition', 'টিউশন ফি (৳)'), field('books', 'বই ও উপকরণ (৳)'), field('transport', 'যাতায়াত (৳)'), field('accommodation', 'থাকা (৳)'), field('other', 'অন্যান্য (৳)')],
+}
+
+function getResult(id, values) {
+  switch (id) {
+    case 'construction':
+      return { kind: 'range', data: calculateHouseCost(values) }
+    case 'wedding':
+      return { kind: 'money', label: 'আনুমানিক মোট বাজেট', value: calculateWeddingBudget(values).total }
+    case 'salary':
+      return { kind: 'salary', data: calculateSalaryExpense(values) }
+    case 'car-emi':
+    case 'bike-emi':
+      return { kind: 'money', label: 'আনুমানিক মাসিক কিস্তি', value: calculateEMI(values.vehiclePrice, values.downPayment, values.loanDurationMonths, values.interestRateAnnual) }
+    case 'travel-budget':
+      return { kind: 'money', label: 'আনুমানিক মোট বাজেট', value: calculateTravelBudget(values).grandTotal }
+    case 'abroad-cost':
+      return { kind: 'money', label: 'আনুমানিক মোট খরচ', value: calculateAbroadCost(values).total }
+    case 'japan-cost':
+      return { kind: 'money', label: 'আনুমানিক মোট খরচ', value: calculateJapanCost(values).total }
+    case 'kuwait-cost':
+      return { kind: 'money', label: 'আনুমানিক মোট খরচ', value: calculateKuwaitCost(values).total }
+    case 'electricity': {
+      const usage = calculateElectricityUsage([{ wattage: values.wattage, hours: values.hours, quantity: values.quantity }])
+      return { kind: 'electricity', daily: usage.dailyKWh, monthly: usage.monthlyKWh, bill: usage.monthlyKWh * (Number(values.rate) || 0) }
+    }
+    case 'education':
+      return { kind: 'education', data: calculateEducationCost(values) }
+    default:
+      return null
+  }
+}
+
+function ResultPanel({ result }) {
+  if (!result) return null
+  return (
+    <aside className="calculator-result" aria-live="polite">
+      <span className="eyebrow">আপনার হিসাব</span>
+      {result.kind === 'range' && <div className="result-range">
+        {[['সর্বনিম্ন', result.data.min], ['সম্ভাব্য', result.data.avg], ['সর্বোচ্চ', result.data.max]].map(([label, value]) => <div key={label}><small>{label}</small><strong>{formatCurrency(value)}</strong></div>)}
+      </div>}
+      {result.kind === 'money' && <><p>{result.label}</p><strong className="result-amount">{formatCurrency(result.value)}</strong></>}
+      {result.kind === 'salary' && <div className="result-stats">
+        <div><small>মাসিক মোট খরচ</small><strong>{formatCurrency(result.data.totalExpense)}</strong></div>
+        <div><small>হাতে থাকবে</small><strong className={result.data.remainingMoney < 0 ? 'negative' : ''}>{formatCurrency(result.data.remainingMoney)}</strong></div>
+        <div><small>সঞ্চয়ের হার</small><strong>{result.data.savingsPercentage.toFixed(1)}%</strong></div>
+      </div>}
+      {result.kind === 'electricity' && <div className="result-stats">
+        <div><small>দৈনিক ব্যবহার</small><strong>{result.daily.toFixed(2)} kWh</strong></div>
+        <div><small>মাসিক ব্যবহার</small><strong>{result.monthly.toFixed(2)} kWh</strong></div>
+        <div><small>আনুমানিক মাসিক বিল</small><strong>{formatCurrency(result.bill)}</strong></div>
+      </div>}
+      {result.kind === 'education' && <div className="result-stats">
+        <div><small>মেয়াদ</small><strong>{result.data.duration} মাস</strong></div>
+        <div><small>সমগ্র মেয়াদে মোট খরচ</small><strong>{formatCurrency(result.data.total)}</strong></div>
+      </div>}
+      <p className="result-note">এটি একটি আনুমানিক হিসাব। প্রকৃত খরচ আপনার পছন্দ ও বর্তমান দামের ওপর নির্ভর করবে।</p>
+    </aside>
+  )
+}
+
+function CalculatorForm({ id }) {
+  const fields = fieldSets[id]
+  const [values, setValues] = useState(() => Object.fromEntries(fields.map((item) => [item.key, item.key === 'quality' ? 'Standard' : item.placeholder || ''])))
+  const result = getResult(id, values)
+
+  function updateValue(key, value) {
+    setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  return (
+    <div className="calculator-layout">
+      <div className="calculator-form-panel">
+        <div className="form-panel-heading"><span className="calculator-icon"><Calculator size={20} /></span><div><h2>আপনার তথ্য দিন</h2><p>পরিবর্তনের সঙ্গে সঙ্গেই হিসাব আপডেট হবে।</p></div></div>
+        <div className="calculator-fields">
+          {fields.map((item) => <label className="form-field" key={item.key}>
+            <span>{item.label}</span>
+            {item.type === 'select' ? <select value={values[item.key]} onChange={(event) => updateValue(item.key, event.target.value)}>{item.options.map((option) => <option key={option} value={option}>{option === 'Basic' ? 'সাশ্রয়ী' : option === 'Standard' ? 'সাধারণ' : 'প্রিমিয়াম'}</option>)}</select> :
+              <div className="input-with-unit"><input type="number" min="0" step="any" inputMode="decimal" value={values[item.key]} placeholder={item.placeholder} onChange={(event) => updateValue(item.key, event.target.value)} /><span>{item.key === 'area' ? 'sq ft' : item.key === 'floors' ? 'তলা' : item.key === 'duration' || item.key === 'loanDurationMonths' ? 'মাস' : item.key === 'interestRateAnnual' ? '%' : item.key === 'wattage' ? 'W' : item.key === 'hours' ? 'ঘণ্টা' : item.key === 'quantity' ? 'টি' : item.key === 'rate' ? '৳ / ইউনিট' : '৳'}</span></div>}
+          </label>)}
+        </div>
+      </div>
+      <ResultPanel result={result} />
+    </div>
+  )
+}
+
+export default function ToolsPage() {
+  const icons = [Home, Wallet, PiggyBank, Calculator, Calculator, Calculator, Wallet, GraduationCap, Wallet, Calculator, GraduationCap]
+  return (
+    <section className="page-shell">
+      <div className="page-heading">
+        <span className="eyebrow">আপনার দৈনন্দিন সহকারী</span>
+        <h1>লাইফ প্ল্যানিং <span>টুলস</span></h1>
+        <p>নিজের তথ্য দিয়ে তাৎক্ষণিক হিসাব করুন। সব ক্যালকুলেশন আপনার ব্রাউজারেই হয়।</p>
+      </div>
+      <div className="tools-page-grid">
+        {toolCatalog.map((tool, index) => {
+          const Icon = icons[index]
+          return <Link className="tool-card" to={`/tools/${tool.id}`} key={tool.id}>
+            <span className={`tool-card-icon tone-${index % 4}`}><Icon size={19} /></span>
+            <span className="tool-card-title">{tool.nameBangla}</span>
+            <span className="tool-card-description">{tool.summaryBangla}</span>
+            <span className="tool-card-link">হিসাব শুরু করুন <ArrowRight size={14} /></span>
+          </Link>
+        })}
+      </div>
+    </section>
+  )
+}
+
+export function ToolDetailPage() {
+  const { id } = useParams()
+  const tool = useMemo(() => toolCatalog.find((item) => item.id === id), [id])
+  if (!tool || !fieldSets[id]) return <section className="page-shell"><div className="empty-state">এই ক্যালকুলেটরটি পাওয়া যায়নি। <Link to="/tools">সব টুল দেখুন</Link></div></section>
+  return (
+    <section className="page-shell tool-detail-page">
+      <Link className="back-link" to="/tools"><ArrowLeft size={16} /> সব লাইফ টুলস</Link>
+      <div className="page-heading tool-detail-heading">
+        <span className="eyebrow">DeshMate ক্যালকুলেটর</span>
+        <h1>{tool.nameBangla}</h1>
+        <p>{tool.summaryBangla}</p>
+      </div>
+      <CalculatorForm key={id} id={id} />
+    </section>
+  )
+}
