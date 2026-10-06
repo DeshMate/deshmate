@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import {
   ArrowRight,
   Compass,
   Copy,
-  FileText,
   Image,
   MapPin,
   Pencil,
@@ -13,6 +12,8 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import districts from '../data/districts.js'
 import { calculateAutomaticTravelEstimate, formatCurrency } from '../utils/calculations.js'
+
+const PdfExportActions = lazy(() => import('../components/PdfExportActions.jsx'))
 
 const SAVED_TOURS_KEY = 'deshmate-saved-tours'
 const kuakata = {
@@ -297,7 +298,7 @@ export default function TravelPlannerPage() {
   }
 
   function getTourLink(selectedEstimate) {
-    const url = new URL('/travel-planner', window.location.origin)
+    const url = new URL('/travel-planner', 'https://deshmate.pages.dev')
     url.searchParams.set('from', selectedEstimate.origin.id)
     url.searchParams.set('to', selectedEstimate.destination.id)
     url.searchParams.set('days', selectedEstimate.costs.assumptions.days)
@@ -379,6 +380,70 @@ export default function TravelPlannerPage() {
   const destinationMapUrl = estimate
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(getDestinationMapQuery(estimate.destination))}`
     : ''
+  const destinationDistrict = estimate
+    ? districts.find((district) => district.id === estimate.destination.id)
+    : null
+  const travelPdfSections = estimate ? [
+    {
+      heading: 'ভ্রমণের বিবরণ',
+      rows: [
+        { label: 'যাত্রার শুরু', value: `${estimate.origin.nameBangla} (${estimate.origin.nameEnglish})` },
+        { label: 'গন্তব্য', value: `${estimate.destination.nameBangla} (${estimate.destination.nameEnglish})` },
+        { label: 'ভ্রমণকারী', value: `${estimate.costs.assumptions.travelers} জন` },
+        { label: 'সময়কাল', value: `${estimate.costs.assumptions.days} দিন · ${estimate.costs.assumptions.nights} রাত` },
+        { label: 'কক্ষের হিসাব', value: `${estimate.costs.assumptions.rooms}টি (প্রতি কক্ষে সর্বোচ্চ ২ জন ধরে)` },
+        { label: 'আনুমানিক একমুখী সড়ক দূরত্ব', value: `${estimate.costs.distanceKm.toLocaleString('bn-BD')} কিমি` },
+      ],
+      paragraph: 'ভ্রমণের তারিখ, নির্দিষ্ট পরিবহন, হোটেল, রেস্তোরাঁ বা কার্যক্রমের নির্বাচন এই Planner-এ নেই; সেগুলোর কোনো তথ্য বা মূল্য এই পরিকল্পনায় যোগ করা হয়নি।',
+    },
+    {
+      heading: 'আনুমানিক খরচের বিস্তারিত',
+      rows: [
+        ...costLabels.map(([key, label]) => ({
+          label,
+          value: `${formatCurrency(estimate.costs.breakdown[key].min)} – ${formatCurrency(estimate.costs.breakdown[key].max)}`,
+        })),
+        { label: 'কার্যক্রম / প্রবেশ ফি', value: 'মোট অনুমানে অন্তর্ভুক্ত নয়' },
+        { label: 'সর্বনিম্ন মোট', value: formatCurrency(estimate.costs.total.min) },
+        { label: 'গড় মোট', value: formatCurrency(getAverage(estimate.costs.total)) },
+        { label: 'সর্বোচ্চ মোট', value: formatCurrency(estimate.costs.total.max) },
+        { label: 'জনপ্রতি সর্বনিম্ন', value: formatCurrency(estimate.costs.perPerson.min) },
+        { label: 'জনপ্রতি গড়', value: formatCurrency(getAverage(estimate.costs.perPerson)) },
+        { label: 'জনপ্রতি সর্বোচ্চ', value: formatCurrency(estimate.costs.perPerson.max) },
+        { label: 'দৈনিক গড় (মোট)', value: formatCurrency(getAverage(estimate.costs.total) / estimate.costs.assumptions.days) },
+      ],
+      paragraph: 'এগুলো পরিকল্পনা-সহায়ক অনুমান, লাইভ ভাড়া বা নিশ্চিত মূল্য নয়। দূরত্ব সরলরেখা ও আনুমানিক সড়ক-ঘুরপথের হিসাব; এটি লাইভ ম্যাপ রুট নয়।',
+    },
+    ...(destinationDistrict?.overview ? [{
+      heading: 'গন্তব্য পরিচিতি',
+      paragraph: destinationDistrict.overview,
+    }] : []),
+    ...(destinationPlaces.length ? [{
+      heading: 'জেলা গাইডে থাকা দর্শনীয় স্থান',
+      items: (estimate.destination.touristSpots || []).map((spot) => {
+        if (typeof spot === 'string') return spot
+        return [
+          spot.nameBn || spot.name,
+          spot.description,
+          spot.location ? `অবস্থান: ${spot.location}` : '',
+          spot.howToReach ? `যাতায়াত: ${spot.howToReach}` : '',
+        ].filter(Boolean).join(' — ')
+      }),
+      paragraph: 'এগুলো গন্তব্য জেলার তথ্যভান্ডারে থাকা স্থান; ব্যবহারকারী-নির্বাচিত itinerary নয়।',
+    }] : []),
+    ...(destinationDistrict?.famousFoods?.length ? [{
+      heading: 'জেলা গাইডে থাকা খাবার',
+      items: destinationDistrict.famousFoods.map((food) => typeof food === 'string' ? food : [food.nameBn || food.name, food.description].filter(Boolean).join(' — ')),
+      paragraph: 'এই Planner-এ খাবার বা রেস্তোরাঁ নির্বাচন করা হয়নি।',
+    }] : []),
+    {
+      heading: 'মানচিত্র ও উৎস',
+      links: [
+        { title: `${estimate.destination.nameBangla} মানচিত্রে দেখুন`, url: destinationMapUrl },
+        ...(destinationDistrict?.sources || []).map((source) => ({ title: source.title, url: source.url })),
+      ],
+    },
+  ] : []
 
   return (
     <section className="page-shell travel-page">
@@ -512,6 +577,14 @@ export default function TravelPlannerPage() {
             </aside>
           </div>
 
+          <Suspense fallback={null}><PdfExportActions
+            title={`${estimate.origin.nameEnglish} থেকে ${estimate.destination.nameEnglish} — ভ্রমণ পরিকল্পনা`}
+            filename={`DeshMate-Travel-Plan-${estimate.origin.nameEnglish}-to-${estimate.destination.nameEnglish}`}
+            sections={travelPdfSections}
+            shareUrl={tourLink}
+            shareSummary={`${estimate.origin.nameBangla} থেকে ${estimate.destination.nameBangla} — ${estimate.costs.assumptions.days} দিনের, ${estimate.costs.assumptions.travelers} জনের পরিকল্পনা। সর্বনিম্ন ${formatCurrency(estimate.costs.total.min)} · গড় ${formatCurrency(getAverage(estimate.costs.total))} · সর্বোচ্চ ${formatCurrency(estimate.costs.total.max)}।`}
+          /></Suspense>
+
           <div className="tour-actions">
             {!nameEditorOpen ? (
               <button className="button button-primary" type="button" onClick={startSaving}>💾 Save Tour Plan</button>
@@ -525,7 +598,6 @@ export default function TravelPlannerPage() {
             )}
             <button className="button button-secondary travel-share-button" type="button" aria-expanded={shareOpen} aria-controls="travel-share-options" onClick={() => setShareOpen((open) => !open)}><Share2 size={16} /> শেয়ার করুন</button>
             <button className="button button-secondary" type="button" onClick={() => copyText(details).then(() => setNotice('ট্যুরের বিবরণ কপি হয়েছে।')).catch(() => setNotice('বিবরণ কপি করা যায়নি।'))}><Copy size={16} /> Copy Details</button>
-            <button className="button button-secondary" type="button" onClick={() => window.print()}><FileText size={16} /> PDF</button>
             <button className="button button-secondary" type="button" onClick={() => exportImage('PNG')}><Image size={16} /> PNG</button>
             <button className="button button-secondary" type="button" onClick={() => exportImage('JPG')}><Image size={16} /> JPG</button>
           </div>

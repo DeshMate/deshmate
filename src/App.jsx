@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
-import HomePage from './pages/HomePage.jsx'
-import DistrictsPage from './pages/DistrictsPage.jsx'
-import TravelPlannerPage from './pages/TravelPlannerPage.jsx'
-import { DistrictDetailPage } from './pages/DistrictsPage.jsx'
-import ToolsPage, { ToolDetailPage } from './pages/ToolsPage.jsx'
-import AboutPage from './pages/AboutPage.jsx'
 import districts from './data/districts.js'
 import { toolCatalog } from './data/tools.js'
 import './App.css'
+
+const HomePage = lazy(() => import('./pages/HomePage.jsx'))
+const DistrictsPage = lazy(() => import('./pages/DistrictsPage.jsx'))
+const DistrictDetailPage = lazy(() => import('./pages/DistrictsPage.jsx').then((module) => ({ default: module.DistrictDetailPage })))
+const TravelPlannerPage = lazy(() => import('./pages/TravelPlannerPage.jsx'))
+const ToolsPage = lazy(() => import('./pages/ToolsPage.jsx'))
+const ToolDetailPage = lazy(() => import('./pages/ToolsPage.jsx').then((module) => ({ default: module.ToolDetailPage })))
+const AboutPage = lazy(() => import('./pages/AboutPage.jsx'))
 
 function StaticPage({ title, description }) {
   return (
@@ -98,22 +100,24 @@ export default function App() {
   return (
     <BrowserRouter>
       <RouteMetadata />
-      <Routes>
-        <Route element={<MainLayout theme={theme} setTheme={setTheme} />}>
-          <Route index element={<HomePage />} />
-          <Route path="districts" element={<DistrictsPage />} />
-          <Route path="districts/:id" element={<DistrictDetailPage />} />
-          <Route path="district/:id" element={<DistrictDetailPage />} />
-          <Route path="travel-planner" element={<TravelPlannerPage />} />
-          <Route path="tools" element={<ToolsPage />} />
-          <Route path="tools/:id" element={<ToolDetailPage />} />
-          <Route path="about" element={<AboutPage />} />
-          <Route path="contact" element={<StaticPage title="যোগাযোগ" description="DeshMate সম্পর্কে মতামত বা পরামর্শ জানাতে hello@deshmate.com ঠিকানায় যোগাযোগ করুন।" />} />
-          <Route path="privacy" element={<StaticPage title="গোপনীয়তা নীতি" description="আপনার হিসাব এই ব্রাউজারেই করা হয়। DeshMate কোনো ব্যাকএন্ড বা ডেটাবেসে আপনার ব্যক্তিগত তথ্য পাঠায় না।" />} />
-          <Route path="terms" element={<StaticPage title="ব্যবহারের শর্ত" description="এই সাইটের ভ্রমণ ও খরচের হিসাবগুলো আনুমানিক পরিকল্পনার জন্য; প্রকৃত খরচ স্থান ও সময় অনুযায়ী পরিবর্তিত হতে পারে।" />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route element={<MainLayout theme={theme} setTheme={setTheme} />}>
+            <Route index element={<HomePage />} />
+            <Route path="districts" element={<DistrictsPage />} />
+            <Route path="districts/:id" element={<DistrictDetailPage />} />
+            <Route path="district/:id" element={<DistrictDetailPage />} />
+            <Route path="travel-planner" element={<TravelPlannerPage />} />
+            <Route path="tools" element={<ToolsPage />} />
+            <Route path="tools/:id" element={<ToolDetailPage />} />
+            <Route path="about" element={<AboutPage />} />
+            <Route path="contact" element={<StaticPage title="যোগাযোগ" description="DeshMate সম্পর্কে মতামত বা পরামর্শ জানাতে hello@deshmate.com ঠিকানায় যোগাযোগ করুন।" />} />
+            <Route path="privacy" element={<StaticPage title="গোপনীয়তা নীতি" description="আপনার হিসাব এই ব্রাউজারেই করা হয়। DeshMate কোনো ব্যাকএন্ড বা ডেটাবেসে আপনার ব্যক্তিগত তথ্য পাঠায় না।" />} />
+            <Route path="terms" element={<StaticPage title="ব্যবহারের শর্ত" description="এই সাইটের ভ্রমণ ও খরচের হিসাবগুলো আনুমানিক পরিকল্পনার জন্য; প্রকৃত খরচ স্থান ও সময় অনুযায়ী পরিবর্তিত হতে পারে।" />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

@@ -536,3 +536,52 @@
   .brand-copy small { display: none; }
   .theme-button, .mobile-menu-button { width: 32px; height: 32px; }
 }
+
+.calculator-output { display: grid; align-self: start; gap: 12px; }
+.calculator-output .calculator-result { position: static; }
+.pdf-export-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.pdf-export-actions-compact { padding: 10px; }
+.pdf-export-button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--surface); font: 600 10px 'DM Sans', 'Noto Sans Bengali', sans-serif; cursor: pointer; }
+.pdf-export-button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.pdf-export-button:disabled { cursor: wait; opacity: .65; }
+.pdf-export-notice { flex-basis: 100%; margin: 0; color: var(--blue); font-size: 10px; line-height: 1.7; }
+.pdf-report-portal { position: fixed; top: 0; left: 0; z-index: -1; width: 794px; visibility: hidden; pointer-events: none; }
+.pdf-report { box-sizing: border-box; width: 794px; padding: 44px 48px; color: #183047; background: #fff; font-family: 'Noto Sans Bengali', 'DM Sans', sans-serif; font-size: 14px; line-height: 1.65; }
+.pdf-report-header { padding-bottom: 20px; border-bottom: 2px solid #16845b; }
+.pdf-report-brand { color: #126746; font: 800 20px 'DM Sans', sans-serif; letter-spacing: .1em; }
+.pdf-report-tagline { margin-top: 3px; color: #627487; font-size: 11px; }
+.pdf-report-header h1 { margin: 22px 0 5px; color: #123d32; font-size: 24px; line-height: 1.5; }
+.pdf-report-header p { margin: 0; color: #627487; font-size: 10px; }
+.pdf-report-section { margin-top: 22px; break-inside: avoid; }
+.pdf-report-section h2 { margin: 0 0 9px; padding-bottom: 5px; border-bottom: 1px solid #d9e4e8; color: #126746; font-size: 15px; }
+.pdf-report-paragraph { margin: 7px 0 0; color: #40576b; font-size: 11px; line-height: 1.85; }
+.pdf-report-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.pdf-report-table tr { break-inside: avoid; }
+.pdf-report-table th, .pdf-report-table td { padding: 7px 8px; border-bottom: 1px solid #e5ecef; text-align: left; vertical-align: top; }
+.pdf-report-table th { width: 43%; color: #53697a; font-weight: 600; }
+.pdf-report-table td { color: #183047; font-weight: 600; overflow-wrap: anywhere; }
+.pdf-report-list { display: grid; gap: 6px; margin: 0; padding-left: 20px; color: #40576b; font-size: 11px; line-height: 1.8; }
+.pdf-report-links { margin-top: 9px; overflow-wrap: anywhere; }
+.pdf-report a { color: #145c9c; text-decoration: underline; }
+.pdf-report-url { color: #40576b; font-size: 10px; overflow-wrap: anywhere; }
+.pdf-report-footer { margin-top: 30px; padding-top: 11px; border-top: 1px solid #d9e4e8; color: #627487; font: 10px 'DM Sans', 'Noto Sans Bengali', sans-serif; }
+
+.calculator-output { grid-column: 2; }
+
+@media print {
+  body.pdf-printing > :not(.pdf-report-portal) { display: none !important; }
+  body.pdf-printing .pdf-report-portal { position: static !important; z-index: auto !important; width: 100% !important; visibility: visible !important; }
+  body.pdf-printing .pdf-report { position: static !important; width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; visibility: visible !important; }
+  body.pdf-printing .pdf-report * { visibility: visible !important; }
+  body.pdf-printing .pdf-report-section { break-inside: auto; }
+  body.pdf-printing .pdf-report-table tr { break-inside: avoid; }
+}
+
+@media (max-width: 430px) {
+  .pdf-export-actions { gap: 6px; padding: 9px; }
+  .pdf-export-button { flex: 1 1 calc(50% - 6px); min-height: 42px; padding: 0 7px; font-size: 9px; }
+}
+
+@media (max-width: 760px) {
+  .calculator-output { grid-column: 1; }
+}

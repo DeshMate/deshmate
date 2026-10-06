@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays, MapPin, Search } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import districts from '../data/districts.js'
 import { formatCurrency } from '../utils/calculations.js'
+
+const PdfExportActions = lazy(() => import('../components/PdfExportActions.jsx'))
 
 function DistrictCard({ district }) {
   return (
@@ -78,6 +80,69 @@ export function DistrictDetailPage() {
   const famousFoods = district.famousFoods || []
   const sources = district.sources || []
   const sourceTitles = new Map(sources.map((source) => [source.url, source.title]))
+  const districtMapUrl = district.mapQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(district.mapQuery)}`
+    : ''
+  const districtPdfSections = [
+    {
+      heading: 'জেলা পরিচিতি',
+      rows: [
+        { label: 'জেলা', value: `${district.nameBangla} (${district.nameEnglish})` },
+        { label: 'বিভাগ', value: `${district.divisionBangla} (${district.divisionEnglish})` },
+        { label: 'ঘোরার ভালো সময়', value: district.bestTimeToVisit || '' },
+      ],
+      paragraph: district.overview || district.shortDescription || '',
+    },
+    ...(district.history ? [{ heading: 'ইতিহাস', paragraph: district.history }] : []),
+    ...(touristSpots.length ? [{
+      heading: 'দর্শনীয় স্থান',
+      items: touristSpots.map((spot) => {
+        if (typeof spot === 'string') return spot
+        return [
+          displayName(spot),
+          spot.category,
+          spot.description,
+          spot.whyFamous ? `পরিচিতি: ${spot.whyFamous}` : '',
+          spot.location ? `অবস্থান: ${spot.location}` : '',
+          spot.howToReach ? `যাতায়াত: ${spot.howToReach}` : '',
+        ].filter(Boolean).join(' — ')
+      }),
+      links: touristSpots
+        .filter((spot) => typeof spot === 'object' && spot.mapQuery)
+        .map((spot) => ({
+          title: `${displayName(spot)} — মানচিত্র`,
+          url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.mapQuery)}`,
+        })),
+    }] : []),
+    ...(famousFoods.length ? [{
+      heading: 'বিখ্যাত খাবার',
+      items: famousFoods.map((food) => typeof food === 'string' ? food : [
+        displayName(food),
+        food.classification,
+        food.description,
+      ].filter(Boolean).join(' — ')),
+    }] : []),
+    ...(transportDetails.length ? [{ heading: 'যাতায়াত', items: transportDetails }] : []),
+    ...(budgetItems.length ? [{
+      heading: 'আনুমানিক বাজেট',
+      rows: budgetItems.map(([key, range]) => ({
+        label: budgetLabels[key],
+        value: `${formatCurrency(range.min)} – ${formatCurrency(range.max)}${range.asOf ? ` (${range.asOf})` : ''}`,
+      })),
+    }] : []),
+    ...(district.popularActivities?.length ? [{ heading: 'জনপ্রিয় কার্যক্রম', items: district.popularActivities }] : []),
+    ...(selectedPlanKey ? [{
+      heading: `${plans[selectedPlanKey].label} ভ্রমণসূচি`,
+      items: plans[selectedPlanKey].items.map(displayName),
+    }] : []),
+    ...((sources.length || districtMapUrl) ? [{
+      heading: 'মানচিত্র ও তথ্যসূত্র',
+      links: [
+        ...(districtMapUrl ? [{ title: `${district.nameBangla} মানচিত্রে দেখুন`, url: districtMapUrl }] : []),
+        ...sources.map((source) => ({ title: source.title, url: source.url })),
+      ],
+    }] : []),
+  ]
 
   return (
     <section className="page-shell district-detail-page">
@@ -99,6 +164,13 @@ export function DistrictDetailPage() {
           </div>
         )}
       </div>
+      <Suspense fallback={null}><PdfExportActions
+        title={`${district.nameBangla} (${district.nameEnglish}) — জেলা তথ্য`}
+        filename={`DeshMate-District-${district.nameEnglish}`}
+        sections={districtPdfSections}
+        shareUrl={`https://deshmate.pages.dev/district/${district.id}`}
+        shareSummary={`${district.nameBangla} জেলার DeshMate তথ্য ও ভ্রমণ গাইড।`}
+      /></Suspense>
 
       <div className="detail-content-grid">
         {touristSpots.length > 0 && (
